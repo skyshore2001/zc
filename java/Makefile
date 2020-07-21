@@ -6,8 +6,8 @@
 #############
 
 #### 可配置项
-OUT_DIR?=../jdcloud-online
-TOMCAT_HOME?=d:/apache-tomcat-8.5.11
+OUT_DIR?=../dist
+TOMCAT_HOME?=d:/apache-tomcat-8.5.28
 
 SRC_DIR?=jdcloud/src svc/src
 APP_HOME?=svc/WebContent
@@ -29,7 +29,10 @@ ALL_JARS:=$(shell find $(TOMCAT_HOME)/lib -name '*.jar') $(JARS)
 NUL:=
 SPACE:=$(NUL) #
 # support windows & linux 
-SEP=$(if $(WINDIR),;,:)
+SEP=:
+ifeq ($(OS),Windows_NT)
+	SEP=;
+endif
 CLASS_PATH=$(subst $(SPACE),$(SEP),$(ALL_JARS))
 
 OUT_CLASS_DIR=$(OUT_DIR)/WEB-INF/classes

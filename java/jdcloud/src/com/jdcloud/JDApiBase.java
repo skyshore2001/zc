@@ -1,23 +1,10 @@
 package com.jdcloud;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.net.HttpURLConnection;
+import java.net.Socket;
 import java.net.URL;
-import java.net.URLConnection;
 import java.net.URLEncoder;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.sql.*;
 import java.text.DateFormat;
@@ -25,9 +12,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.Date;
-import java.util.function.BiPredicate;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
@@ -35,11 +20,16 @@ import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.DESKeySpec;
 import javax.servlet.http.HttpSession;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-
-public class JDApiBase
+public class JDApiBase extends Common
 {
+	public static class DbExpr
+	{
+		public String val;
+		public DbExpr(String val) {
+			this.val = val;
+		}
+	}
+
 	public static final int E_ABORT = -100;
 	public static final int E_AUTHFAIL = -1;
 	public static final int E_OK = 0;
@@ -57,10 +47,6 @@ public class JDApiBase
 	public static final int AUTH_EMP = 0x2;  // 员工登录
 	public static final int AUTH_ADMIN = 0x4; // 超级管理员登录
 	public static final int AUTH_LOGIN = 0xff; // 任意角色登录
-
-	public static final int KB = 1024;
-	public static final int MB = 1024 * KB;
-	public static final int GB = 1024 * MB;
 
 	public JDEnvBase env;
 	
@@ -91,24 +77,6 @@ public class JDApiBase
 		E_SERVER, "服务器错误",
 		E_FORBIDDEN, "禁止操作"
 	);
-
-	@SuppressWarnings("unchecked")
-	public static <K,V> Map<K,V> asMap(Object ... args) {
-		Map<K,V> m = new LinkedHashMap<K, V>();
-		for (int i=0; i<args.length-1; i+=2) {
-			m.put((K)args[i], (V)args[i+1]);
-		}
-		return m; 
-	}
-
-	@SuppressWarnings("unchecked")
-	public static <T> List<T> asList(T ... args) {
-		List<T> ls = new ArrayList<>();
-		for (T e: args) {
-			ls.add(e);
-		}
-		return ls;
-	}
 
 	public static String GetErrInfo(int code)
 	{
@@ -277,7 +245,7 @@ e.g.
 
 	int orderId = dbInsert("Ordr", new JsObject(
 		"tm", new Date(), // 支持Date类型
-		"tm1", "=now()", // "="开头，表示是SQL表达式
+		"tm1", dbExpr("now()"), // 使用dbExpr直接提供SQL表达式
 		"amount", 100,
 		"dscr", null // null字段会被忽略
 	));
@@ -290,7 +258,7 @@ e.g.
 
 		for (String k : kv.keySet())
 		{
-			if (!k.matches("\\w+"))
+			if (!k.matches("(?U)\\w+"))
 				throw new MyException(E_PARAM, String.format("bad property `%s`", k));
 
 			Object oval = kv.get(k);
@@ -313,8 +281,8 @@ e.g.
 					.append(date(null, (Date)oval))
 					.append("'");
 			}
-			else if (oval instanceof String && val.charAt(0) == '=') {
-				values.append(val.substring(1));
+			else if (oval instanceof DbExpr) {
+				values.append(((DbExpr)oval).val);
 			}
 			else {
 				val = htmlEscape(val);
@@ -347,7 +315,7 @@ e.g.
 
 	// UPDATE Ordr SET tm=now() WHERE tm IS NULL
 	int cnt = dbUpdate("Ordr", new JsObject(
-		"tm", "=now()"  // "="开头，表示是SQL表达式
+		"tm", dbExpr("now()")  // 使用dbExpr，表示是SQL表达式
 	), "tm IS NULL);
 */
 	public int dbUpdate(String table, Map<String,Object> kv, Object cond) throws SQLException
@@ -383,8 +351,8 @@ e.g.
 			else if (val instanceof Number) {
 				kvstr.append(k).append("=").append(val);
 			}
-			else if (val instanceof String && val.toString().startsWith("=")) {
-				kvstr.append(k).append(val);
+			else if (val instanceof DbExpr) {
+				kvstr.append(k).append("=").append(((DbExpr)val).val);
 			}
 			else {
 				kvstr.append(k).append("=").append(Q(htmlEscape(val.toString())));
@@ -405,67 +373,19 @@ e.g.
 		return cnt;
 	}
 
-	public static String jsonEncode(Object o)
-	{
-		return jsonEncode(o, false);
-	}
 /**<pre>
-%fn jsonEncode(o, doFormat=false)
+@fn dbExpr($val)
 
-%param doFormat 设置为true则会对JSON输出进行格式化便于调试。
+用于在dbInsert/dbUpdate(插入或更新数据库)时，使用表达式：
 
-%see jsonDecode
- */
-	public static String jsonEncode(Object o, boolean doFormat)
-	{
-		GsonBuilder gb = new GsonBuilder();
-		gb.serializeNulls().disableHtmlEscaping().setDateFormat("yyyy-MM-dd HH:mm:ss");
-		if (doFormat)
-			gb.setPrettyPrinting();
-		Gson gson = gb.create();
-		return gson.toJson(o);
-	}
-	
-/**<pre>
-%fn jsonDecode(json, type) -> type
+	int id = dbInsert("Ordr", asMap(
+		"tm", dbExpr("now()") // 使用dbExpr直接提供SQL表达式
+	));
 
-	Map m = jsonDecode(json, Map.class);
-	List m = jsonDecode(json, List.class);
-	User u = jsonDecode(json, User.class);
-
-	Object o = jsonDecode(json);
-	// the same as
-	Object o = jsonDecode(json, Object.class);
-	
-%see jsonEncode
- */
-	public static <T> T jsonDecode(String json, Class<T> type)
+*/
+	public static DbExpr dbExpr(String val)
 	{
-		GsonBuilder gb = new GsonBuilder();
-		gb.serializeNulls().disableHtmlEscaping().setDateFormat("yyyy-MM-dd HH:mm:ss");
-		Gson gson = gb.create();
-		return gson.fromJson(json, type);
-	}
-	public static Object jsonDecode(String json)
-	{
-		return jsonDecode(json, Object.class);
-	}
-	
-	static final Map<String, String> htmlEntityMapping = asMap(
-		"<", "&lt;",
-		">", "&gt;",
-		"&", "&amp;"
-	);
-	public static String htmlEscape(String s)
-	{
-		StringBuffer sb = new StringBuffer();
-		Matcher m = regexMatch(s, "<|>|&");
-		while (m.find()) {
-			m.appendReplacement(sb, (String)htmlEntityMapping.get(m.group(0)));
-		}
-		m.appendTail(sb);
-		return sb.toString();
-		//return StringEscapeUtils.unescapeHtml();
+		return new DbExpr(val);
 	}
 
 	public void addLog(String s)
@@ -477,6 +397,7 @@ e.g.
 	{
 		if (env.isTestMode && env.debugLevel >= level)
 		{
+			System.err.println(s);
 			env.debugInfo.add(s);
 		}
 	}
@@ -701,24 +622,25 @@ TODO: 直接支持 param("items/(id,qty?/n,dscr?)"), 添加param_objarr函数，
 		[ "id"=>101, "qty"=>null, dscr=>"打蜡"]
 	]
 */
-	public Object param(String name, Object defVal, String coll, boolean doHtmlEscape) {
+	public Object param(String name, Object defVal, Object coll, boolean doHtmlEscape) {
 		String[] a = parseType(name);
 		String type = a[0];
 		name = a[1];
-		Object ret = env.getParam(name, coll);
+		@SuppressWarnings("unchecked")
+		Object ret = (coll == null || coll instanceof String)? 
+				env.getParam(name, (String)coll)
+				: (coll instanceof Map)? ((Map<String,Object>)coll).get(name): null;
 		
-		if (ret == null && defVal != null)
+		if (ret == null || ret.equals(""))
 			return defVal;
 
 		if (ret != null && ret instanceof String) {
 			String val = (String)ret;
+			// avoid XSS attack
+			if (doHtmlEscape)
+				ret = htmlEscape(val);
 			if (type.equals("s"))
 			{
-				// avoid XSS attack
-				if (doHtmlEscape)
-					ret = htmlEscape(val);
-				else
-					ret = val;
 			}
 			else if (type.equals("i"))
 			{
@@ -770,19 +692,18 @@ TODO: 直接支持 param("items/(id,qty?/n,dscr?)"), 添加param_objarr函数，
 					throw new MyException(E_PARAM, String.format("Bad Request - invalid datetime param `%s`=`%s`.", name, val));
 				ret = dt;
 			}
-			/*
 			else if (type == "js" || type == "tbl") {
-				ret1 = json_decode(ret, true);
+				Object ret1 = jsonDecode((String)ret);
 				if (ret1 == null)
-					throw new MyException(E_PARAM, "Bad Request - invalid json param `name`=`ret`.");
+					throw new MyException(E_PARAM, String.format("Bad Request - invalid json param `%s`=`%s`.", name, ret));
+
 				if (type == "tbl") {
 					ret1 = table2objarr(ret1);
-					if (ret1 == false)
-						throw new MyException(E_PARAM, "Bad Request - invalid table param `name`=`ret`.");
+					if (Objects.equals(ret1, false))
+						throw new MyException(E_PARAM, String.format("Bad Request - invalid table param `%s`=`%s`.", name, ret));
 				}
 				ret = ret1;
 			}
-			*/
 			else if (type.contains(":"))
 			{
 				ret = param_varr(val, type, name);
@@ -1071,17 +992,15 @@ names是一个数组，表示至少有一个参数有值，返回JsArray，包�
 		JsObject row0 = (JsObject)rs.get(0);
 		h.addAll(row0.keySet());
 		if (fixedColCnt >= 0) {
-			/*
-			TODO
-			foreach (rs as row) {
-				h1 = array_keys(row);
-				for (i=fixedColCnt; i<count(h1); ++i) {
-					if (array_search(h1[i], h) === false) {
-						h[] = h1[i];
+			for (Object row: rs) {
+				JsObject row1 = (JsObject)row;
+				String[] h1 = row1.keySet().toArray(new String[0]);
+				for (int i=fixedColCnt; i<h1.length; ++i) {
+					if (! h.contains(h1[i])) {
+						h.add(h1[i]);
 					}
 				}
 			}
-			*/
 		}
 		for (Object row : rs) {
 			JsObject row1 = (JsObject)row;
@@ -1095,121 +1014,94 @@ names是一个数组，表示至少有一个参数有值，返回JsArray，包�
 	}
 
 /**<pre>
-%fn regexMatch(str, pat) -> Matcher
+@fn table2objarr
 
-正则表达式匹配
+将table格式转为 objarr, 即前端的rs2Array, 如：
 
-	String phone = "13712345678";
-	Matcher m = regexMatch(phone, "...(\\d{4})";
-	if (m.find()) { // 如果要连续匹配可用 while (m.find()) 
-		// m.group(1) 为中间4位数
-	}
-
- */
-	public static Matcher regexMatch(String str, String pat) {
-		return Pattern.compile(pat).matcher(str);
-	}
-
-/**<pre>
-%fn regexReplace(str, pat, str1) -> String
-%alias regexReplace(str, pat, fn) -> String
-
-用正则表达式替换字符串
-
-%param fn(Matcher m) -> String
-
-	String phone = "13712345678"; // 变成 "137****5678"
-	String phone1 = regexReplace(phone, "(?<=^\\d{3})\\d{4}", "****");
-	或者
-	String phone1 = regexReplace(phone, "^(\\d{3})\\d{4}", m -> { return m.group(1) + "****"; } );
+	table2objarr(
+		[
+			"h"=>["id", "name"],
+			"d"=>[ 
+				[100,"A"], 
+				[101,"B"]
+			   ] 
+		]
+	) -> [ ["id"=>100, "name"=>"A"], ["id"=>101, "name"=>"B"] ]
 
  */
-	public static String regexReplace(String str, String pat, String str1) {
-		Matcher m = regexMatch(str, pat);
-		StringBuffer sb = new StringBuffer();
-		while (m.find()) {
-			m.appendReplacement(sb, str1);
-		}
-		m.appendTail(sb);
-		return sb.toString();
-	}
-	public static String regexReplace(String str, String pat, java.util.function.Function<Matcher, String> fn) {
-		Matcher m = regexMatch(str, pat);
-		StringBuffer sb = new StringBuffer();
-		while (m.find()) {
-			String str1 = fn.apply(m);
-			m.appendReplacement(sb, str1);
-		}
-		m.appendTail(sb);
-		return sb.toString();
-	}
-	
-	public String join(String sep, List<?> ls) {
-		StringBuffer sb = new StringBuffer();
-		for (Object o : ls) {
-			if (sb.length() > 0)
-				sb.append(sep);
-			sb.append(o);
-		}
-		return sb.toString();
+	public static List<Object> table2objarr(Object tbl)
+	{
+		List<Object> emptyArr = new ArrayList<Object>();
+		if (!(tbl instanceof Map))
+			return emptyArr;
+		Map<String, Object> m = cast(tbl);
+		if (! (m.get("h") instanceof List && m.get("d") instanceof List))
+			return emptyArr;
+		List<String> h = cast(m.get("h"));
+		List<List<Object>> d = cast(m.get("d"));
+		if (d.size() == 0 || h.size() != d.get(0).size())
+			return emptyArr;
+		return varr2objarr(d, h);
 	}
 
-/**<pre>
-%var T_SEC,T_MIN,T_HOUR,T_DAY
-
-	Date dt = new Date();
-	Date dt1 = parseDate(dtStr1);
-	long hours = (dt1.getTime() - dt.getTime()) / T_HOUR;
-	Date dt2 = new Date(dt1.getTime() + 4 * T_DAY);
-	
-%see time
- */
-	public static final long T_SEC = 1000;
-	public static final long T_MIN = 60*T_SEC;
-	public static final long T_HOUR = 3600*T_SEC;
-	public static final long T_DAY = 24*T_HOUR;
-	
-	public static final String FMT_DT = "yyyy-MM-dd HH:mm:ss";
 /** <pre>
-%fn date(fmt?="yyyy-MM-dd HH:mm:ss", dt?)
+@fn varr2objarr(d, h)
 
-生成日期字符串。
+将值数组类型 d (仅有值的二维数组, elem=[$col1, $col2] ) 转为对象数组objarr, elem={col1=>cell1, col2=>cell2})
 
-	String dtStr1 = date(null, null);
-	Date dt1 = parseDate(dtStr1);
-	String dtStr2 = date("yyyy-MM-dd", dt1);
-	
-%see parseDate
-*/
-	public String date(String fmt, Date dt) {
-		if (fmt == null)
-			fmt = FMT_DT;
-		if (dt == null)
-			dt = new Date();
-		return new java.text.SimpleDateFormat(fmt).format(dt);
-	}
-	public String date(String fmt, long dtval) {
-		if (fmt == null)
-			fmt = FMT_DT;
-		Date dt = new Date(dtval);
-		return new java.text.SimpleDateFormat(fmt).format(dt);
-	}
-	public String date() {
-		return date(null, null);
-	}
-/**<pre>
-%fn time()
+例：
 
-系统当前时间（毫秒）。
+	varr2objarr(
+		[ [100, "A"], [101, "B"] ], 
+		["id", "name"] )
+	-> [ ["id"=>100, "name"=>"A"], ["id"=>101, "name"=>"B"] ]
 
-	long t = time();
-	long unixTimestamp = t / T_SEC
-	Date dt1 = new Date();
-	long diff_ms = dt1.getTime() - t;
  */
-	public long time() {
-		return System.currentTimeMillis();
+	public static List<Object> varr2objarr(List<List<Object>> d, List<String> h)
+	{
+		List<Object> ret = new ArrayList<Object>();
+		for (List<Object> row: d) {
+			Map<String, Object> m = new HashMap<String, Object>();
+			int i = 0;
+			for (String col: h) {
+				Object val = i<row.size()? row.get(i): null;
+				m.put(col, val);
+				++ i;
+			}
+			ret.add(m);
+		}
+		return ret;
 	}
+
+/**<pre>
+@fn list2varr(ls, colSep=':', rowSep=',')
+
+- ls: 代表二维表的字符串，有行列分隔符。
+- colSep, rowSep: 列分隔符，行分隔符。
+
+将字符串代表的压缩表("v1:v2:v3,...")转成值数组。
+
+e.g.
+
+	$users = "101:andy,102:beddy";
+	$varr = list2varr($users);
+	// $varr = [["101", "andy"], ["102", "beddy"]];
+	
+	$cmts = "101\thello\n102\tgood";
+	$varr = list2varr($cmts, "\t", "\n");
+	// $varr=[["101", "hello"], ["102", "good"]]
+ */
+	public static List<List<Object>> list2varr(String ls, String colSep, String rowSep)
+	{
+		List<List<Object>> ret = new ArrayList<>();
+		for (String rowStr: ls.split(rowSep)) {
+			String [] row1 = rowStr.trim().split(colSep);
+			List<Object> row = new ArrayList<>(Arrays.asList(row1));
+			ret.add(row);
+		}
+		return ret;
+	}
+
 	
 	public String getenv(String name) {
 		return env.props.getProperty(name);
@@ -1226,68 +1118,6 @@ names是一个数组，表示至少有一个参数有值，返回JsArray，包�
  */
 	public String getenv(String name, String defVal) {
 		return env.props.getProperty(name, defVal);
-	}
-
-/**<pre>
-%fn md5(s) -> String 
-
-返回md5字符串(32字符)
-*/
-	public String md5(String s)
-	{
-		byte[] rv = md5Bytes(s); 
-		return new java.math.BigInteger(1, rv).toString(16);
-	}
-/**<pre>
-%fn md5Bytes(s) -> byte[] 
-
-返回md5结果(16字节)
-*/
-	public byte[] md5Bytes(String s)
-	{
-		byte[] ret = null;
-		try {
-			java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
-			md.update(s.getBytes());
-			ret = md.digest();
-		} catch (NoSuchAlgorithmException e) {
-		}
-		return ret;
-	}
-	
-/**<pre>
-%fn rand(from, to) -> int
-
-生成[from, to]范围内随机整数
- */
-	public int rand(int from, int to)
-	{
-		return from + (int)(Math.random() * (to-from+1));
-	}
-	
-/**<pre>
-%fn base64Encode(s) -> String
-%param s String/byte[]
- */
-	public String base64Encode(String s) {
-		// TODO: utf-8
-		return base64Encode(s.getBytes());
-	}
-	public String base64Encode(byte[] bs) {
-		return Base64.getEncoder().encodeToString(bs);
-	}
-/**<pre>
-%fn base64Decode(s) -> String
-%fn base64DecodeBytes(s) -> byte[]
-
-	String text = base64Decode(enc);
-	
- */
-	public String base64Decode(String s) {
-		return new String(base64DecodeBytes(s));
-	}
-	public byte[] base64DecodeBytes(String s) {
-		return Base64.getDecoder().decode(s);
 	}
 
 
@@ -1375,178 +1205,6 @@ cred为"{user}:{pwd}"格式，支持使用base64编码。
 		return md5(pwd);
 	}
 
-/**<pre>
-%fn indexOf(map, fn) -> key
-%param fn(key, value) -> boolean
-
-找符合fn条件的第一个key。找不到返回null。
-
-	JsObject map = new JsObject("aa", 100, "bb", 300);
-	String key = indexOf(map, (k,v)->{v>200}); // key="bb"
-	
- */
-	public static <K,V> K indexOf(Map<K,V> m, BiPredicate<K,V> fn) {
-		K key = null;
-		for (Map.Entry<K, V> e: m.entrySet()) {
-			if (fn.test(e.getKey(), e.getValue())) {
-				key = e.getKey();
-				break;
-			}
-		}
-		return key;
-	}
-	
-/**<pre>
-%fn indexOf(arr, e) -> index
-
-数组查找。返回找到的索引，找不到返回-1。
-
-	JsArray arr = new JsArray("aa", "bbb");
-	int idx = indexOf(arr, "bbb"); // idx =1
-	
-*/
-	public static <T> int indexOf(T[] arr, T e) {
-		int idx = -1;
-		for (int i=0; i<arr.length; ++i	) {
-			if (arr[i].equals(e)) {
-				idx = i;
-				break;
-			}
-		}
-		return idx;
-	}
-
-/**<pre>
-%fn forEach(map, fn(k, v))
-
-与map.forEach类似，但抛出Exception异常。
-如果设置外部变量，示例：
-
-	Map<String, Integer> m = new HashMap<>();
-	// add values ...
-	Integer[] minVal = {Integer.MAX_VALUE};
-	forEach(m, (k, v) -> {
-		if (minVal[0] > v)
-			minVal[0] = v;
-	});
-
-*/
-	@FunctionalInterface
-	public interface MapForEachFn<K,V>
-	{
-		void exec(K k, V v) throws Exception;
-	}
-	public static <K,V> void forEach(Map<K,V> m, MapForEachFn<K,V> fn) throws Exception
-	{
-		for (Map.Entry<K,V> kv: m.entrySet()) {
-			fn.exec(kv.getKey(), kv.getValue());
-		}
-	}
-
-/**<pre>
-@fn readFileBytes(file, maxLen=-1) -> byte[]
-
-返回null表示读取失败。
- */
-	public static byte[] readFileBytes(String file) throws IOException
-	{
-		return readFileBytes(file, -1);
-	}
-	public static byte[] readFileBytes(String file, int maxLen)
-	{
-		byte[] bs = null;
-		try {
-			File f = new File(file);
-			if (! f.exists())
-				return null;
-			InputStream in = new FileInputStream(f);
-			int len = (int)f.length();
-			if (maxLen >0 && len > maxLen)
-				len = maxLen;
-			bs = new byte[len];
-			in.read(bs);
-			in.close();
-		}
-		catch (IOException ex) {
-			
-		}
-		return bs;
-	}
-
-/**<pre>
-%fn readFile(file, charset="utf-8") -> String
-
-返回null表示读取失败。
- */
-	public static String readFile(String file) throws IOException
-	{
-		return readFile(file, "utf-8");
-	}
-	public static String readFile(String file, String charset) throws IOException
-	{
-		byte[] bs = readFileBytes(file);
-		if (bs == null)
-			return null;
-		return new String(bs, charset);
-	}
-
-/**<pre>
-%fn writeFile(in, out, bufSize?)
-
-复制输入到输出。输入、输出可以是文件或流。
-
-%param in String/File/InputStream
-%param out String/File/OutputStream
-%param bufSize 指定buffer大小，设置0使用默认值(10K)
- */
-	public static void writeFile(Object in, Object out, int bufSize) throws IOException
-	{
-		if (bufSize <= 0)
-			bufSize = 10* KB;
-		InputStream in1 = null;
-		boolean closeIn = true;
-		if (in instanceof String) {
-			in1 = new FileInputStream((String)in);
-		}
-		else if (in instanceof File) {
-			in1 = new FileInputStream((File)in);
-		}
-		else if (in instanceof InputStream) {
-			in1 = (InputStream)in;
-			closeIn = false;
-		}
-		else {
-			throw new IllegalArgumentException("writeFile:in");
-		}
-		OutputStream out1 = null;
-		boolean closeOut = true;
-		if (out instanceof String) {
-			out1 = new FileOutputStream((String)out);
-		}
-		else if (out instanceof File) {
-			out1 = new FileOutputStream((File)out);
-		}
-		else if (out instanceof OutputStream) {
-			out1 = (OutputStream)out;
-			closeOut = false;
-		}
-		else {
-			throw new IllegalArgumentException("writeFile:out");
-		}
-
-		byte[] buffer = new byte[bufSize];
-		int len = 0;
-		while ((len = in1.read(buffer)) != -1) {
-			out1.write(buffer, 0, len);
-		}
-		if (closeOut)
-			out1.close();
-		if (closeIn)
-			in1.close();
-	}
-	public static void writeFile(Object in, Object out) throws IOException {
-		writeFile(in, out, 0);
-	}
 
 /**<pre>
 %fn getPath(path, withSep) -> path
@@ -1614,24 +1272,10 @@ cred为"{user}:{pwd}"格式，支持使用base64编码。
 		throw new DirectReturn(0, null, false);
 	}
 	
-/**<pre>
-%fn safeClose(o)
-
-Close without exception.
- */
-	public void safeClose(AutoCloseable o) {
-		try {
-			if (o != null)
-				o.close();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-	
 /**
 %fn tmCols(fieldName = "t0.tm")
 
-为查询添加时间维度单位: y,m,w,d,wd,h (年，月，周，日，周几，时)。
+为查询添加时间维度单位: y,q,m,w,d,wd,h (年，季度，月，周，日，周几，时)。
 
 - wd: 1-7表示周一到周日
 - w: 一年中第一周，从该年第一个周一开始(mysql week函数模式7).
@@ -1649,6 +1293,7 @@ Close without exception.
  */
 	public List<String> tmCols(String fieldName) {
 		return asList("year(" + fieldName + ") y",
+				"quarter(" + fieldName + ") q",
 				"month(" + fieldName + ") m",
 				"week(" + fieldName + ",7) w",
 				"day(" + fieldName + ") d", 
@@ -1710,10 +1355,13 @@ Close without exception.
 		}
 		return sb.toString();
 	}
-	public static String makeUrl(String ac, Map<String,Object> params) throws Exception
+	public String makeUrl(String ac, Map<String,Object> params) throws Exception
 	{
 		StringBuffer url = new StringBuffer();
-		url.append(ac);
+		if (ac.matches("^[\\w\\.]+$"))
+			url.append(getBaseUrl(false) + "/" + ac);
+		else
+			url.append(ac);
 		if (params != null) {
 			if (url.indexOf("?") <= 0)
 				url.append('?');
@@ -1736,9 +1384,8 @@ postParams可以是字符串、map或list等数据结构。默认contentType为"
 如果要明确指定格式，可以设置opt.contentType参数，如
 
 	String rv = httpCall(baseUrl, urlParams, postParams, asMap("contentType", "application/json"));
-	
 
-- opt: {contentType}
+- opt: {contentType, async}
 
 e.g.
 
@@ -1748,22 +1395,21 @@ e.g.
 	JsObject postParams = new JsObject("postintval", 100, "poststrval", "中文");
 	String rv = httpCall(baseUrl, urlParams, postParams, null);
 
+- opt.async: 当设置为true时，不等服务端响应就关闭连接。
+
 */
-	public static String httpCall(String url, Map<String,Object> getParams, Object postParams, Map<String,Object> opt) throws Exception
+	public String httpCall(String url, Map<String,Object> getParams, Object postParams, Map<String,Object> opt) throws Exception
 	{
 		String url1 = makeUrl(url, getParams);
 		URL oUrl = new URL(url1);
-		HttpURLConnection conn = (HttpURLConnection)oUrl.openConnection();
-		conn.setConnectTimeout(10000);
-		conn.setReadTimeout(20000);
+		String ct = null;
 
 		byte[] postBytes = null;
 		String charset = "UTF-8";
 		if (postParams != null) {
 			String postStr = null;
-			String ct = null;
 			if (opt != null) 
-				ct = Objects.toString(opt.get("contentType"));
+				ct = (String)opt.get("contentType");
 			if (ct == null) {
 				if (postParams instanceof Map || postParams instanceof String) {
 					ct = "application/x-www-form-urlencoded";
@@ -1783,11 +1429,44 @@ e.g.
 				Map<String,Object> postMap = (Map<String,Object>)postParams;
 				postStr = urlEncodeArr(postMap);
 			}
+
+			postBytes = postStr.getBytes(charset);
+		}
+		boolean isAsync = opt != null && (boolean) opt.get("async");
+		if (isAsync) {
+			String host = oUrl.getHost();
+			int port = oUrl.getPort();
+			if (port == -1)
+				port = oUrl.getDefaultPort();
+
+			try (
+				Socket sock = new Socket(host, port);
+				OutputStream out = sock.getOutputStream()
+			) {
+				StringBuilder sb = new StringBuilder();
+				sb.append(String.format("%s %s HTTP/1.1\r\nHost: %s\r\n", postBytes==null? "GET": "POST", url1, host));
+				if (postBytes != null) {
+					sb.append(String.format("Content-Type: %s;charset=%s\r\nContent-Length: %s\r\n", ct, charset, postBytes.length));
+				}
+				sb.append("Connection: Close\r\n\r\n");
+				out.write(sb.toString().getBytes(charset));
+				if (postBytes != null) {
+					out.write(postBytes);
+				}
+			}
+			return null;
+		}
+
+		HttpURLConnection conn = (HttpURLConnection)oUrl.openConnection();
+		conn.setConnectTimeout(10000);
+		conn.setReadTimeout(20000);
+		conn.setUseCaches(false);
+
+		if (postBytes != null) {
 			conn.setRequestProperty("Content-Type", ct + ";charset=" + charset);
 			conn.setDoOutput(true);
 			conn.setDoInput(true);
-
-			postBytes = postStr.getBytes(charset);
+			conn.setRequestMethod("POST");
 		}
 		conn.connect();
 		if (postBytes != null) {
@@ -1795,8 +1474,7 @@ e.g.
 				out.write(postBytes);
 			}
 		}
-
-		String ct = conn.getContentType();
+		ct = conn.getContentType();
 		String resCharset = "UTF-8";
 		if (ct != null) {
 			Matcher m = regexMatch(ct, "(?i)charset=([\\w-]+)");
@@ -1817,6 +1495,115 @@ e.g.
 			}
 			ret = out.toString(resCharset);
 		}
+		return ret;
+	}
+	
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	public void callSvcAsync(String ac, Map params, Map postParams) throws Exception
+	{
+		env.onAfterActions.add( () -> {
+			httpCall(ac, params, postParams, asMap("async", true));
+		});
+	}
+
+/**<pre>
+#fn pivit(objArr, gcols, xcolCnt=null)
+
+将行转置到列。一般用于统计分析数据处理。
+
+- gcols为转置字段，可以是一个或多个字段。可以是个字符串("f1" 或 "f1,f2")，也可以是个数组（如["f1","f2"]）
+- objArr是对象数组，最后一列是统计列。
+
+示例：
+
+	JsArray arr = new JsArray(
+		new JsObject("y",2019, "m",11, "cateId",1, "cateName","衣服", "sum",20000),
+		new JsObject("y",2019, "m",11, "cateId",2, "cateName","食品", "sum",12000),
+		new JsObject("y",2019, "m",12, "cateId",2, "cateName","食品", "sum",15000),
+		new JsObject("y",2020, "m",2, "cateId",1, "cateName","衣服", "sum",19000)
+	);
+
+	// 将类别转到列
+	JsArray arr2 = JDApiBase.pivot(arr, "cateId,cateName", null);
+
+得到：
+
+	[
+	  { "y": 2019, "m": 11, "1-衣服": 20000.0, "2-食品": 12000.0 },
+	  { "y": 2019, "m": 12, "2-食品": 15000.0 },
+	  { "y": 2020, "m": 2, "1-衣服": 19000.0 }
+	]
+
+*/
+	static JsArray pivot(JsArray objArr, String gcol, int[] out_xcolCnt) throws Exception
+	{
+		if (objArr.size() == 0)
+			return objArr;
+
+		List<String> gcols = asList(gcol.split("\\s*,\\s*"));
+
+		if (gcols.size() == 0) {
+			throw new MyException(E_PARAM, "bad gcols: no data", "未指定分组列");
+		}
+		JsObject row0 = cast(getJsValue(objArr, 0));
+		Set<String> cols = row0.keySet(); // LinkedHashMap返回的set可保持字段顺序
+		forEach(gcols, col -> {
+			if (! cols.contains(col))
+				throw new MyException(E_PARAM, "bad gcol " + col + ": not in cols", "分组列不正确: " + col);
+		});
+
+		// xcols = cols - ycol(最后一列) - gcols
+		List<String> xcols = asList();
+		int i =0;
+		int colLen = cols.size();
+		for (String col: cols) {
+			++ i;
+			if (i == colLen)
+				continue;
+			if (gcols.contains(col))
+				continue;
+			xcols.add(col);
+		}
+		if (out_xcolCnt != null)
+			out_xcolCnt[0] = xcols.size();
+		
+		JsObject xMap = new JsObject(); // {x=>新行}
+
+		forEach(objArr, rowA -> {
+			JsObject row = cast(rowA);
+			// x = xtext(row);
+			JsObject xarr = new JsObject();
+			for (String col: xcols) {
+				xarr.put(col, row.get(col));
+			}
+			String x = join("-", xarr.values());
+
+			JsArray garr = new JsArray();
+			for (String col: gcols) {
+				garr.add(row.get(col));
+			}
+			String g = join("-", garr);
+
+			if (! xMap.containsKey(x)) {
+				xMap.put(x, xarr);
+			}
+			Object[] lastOne = new Object[] {null}; // row中最后一列，且应是数值
+			forEach(row, (k, v) -> {
+				lastOne[0] = v;
+			});
+			double y = doubleValue(lastOne[0]);
+
+			JsObject row1 = cast(xMap.get(x));
+			if (! row1.containsKey(g))
+				row1.put(g, y);
+			else
+				row1.put(g, (Double)row1.get(g) + y);
+		});
+
+		JsArray ret = new JsArray();
+		forEach(xMap, (k, v) -> {
+			ret.add(v);
+		});
 		return ret;
 	}
 }
