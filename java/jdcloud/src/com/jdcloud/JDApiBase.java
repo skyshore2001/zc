@@ -50,22 +50,43 @@ public class JDApiBase extends Common
 
 	public JDEnvBase env;
 	
+	public static class ForDel { }
+	public static ForDel forDel = new ForDel();
+	
+	public Object _GET(String key) {
+		return env._GET.get(key);
+	}
+	public void _GET(String key, Object val) {
+		if (val == forDel) {
+			env._GET.remove(key);
+			return;
+		}
+		env._GET.put(key, val);
+	}
+	public Object _POST(String key) {
+		return env._POST.get(key);
+	}
+	public void _POST(String key, Object val) {
+		if (val == forDel) {
+			env._POST.remove(key);
+			return;
+		}
+		env._POST.put(key, val);
+	}
+	public Object _SESSION(String key) {
+		return getSession(key);
+	}
+	public void _SESSION(String key, Object val) {
+		if (val == forDel) {
+			this.unsetSession(key);
+			return;
+		}
+		setSession(key, val);
+	}
 	/*
-	public NameValueCollection _GET 
-	{
-		get { return env._GET;}
-	}
-	public NameValueCollection _POST
-	{
-		get { return env._POST;}
-	}
 	public NameValueCollection _SERVER
 	{
 		get { return env.ctx.Request.ServerVariables;}
-	}
-	public HttpSessionState _SESSION
-	{
-		get { return env.ctx.Session;}
 	}
 	*/
 
@@ -75,7 +96,8 @@ public class JDApiBase extends Common
 		E_NOAUTH, "未登录",
 		E_DB, "数据库错误",
 		E_SERVER, "服务器错误",
-		E_FORBIDDEN, "禁止操作"
+		E_FORBIDDEN, "禁止操作",
+		E_ABORT, "中止执行"
 	);
 
 	public static String GetErrInfo(int code)
@@ -93,11 +115,11 @@ public class JDApiBase extends Common
 		return "'" + s.toString().replace("'", "\\'") + "'";
 	}
 	
-	public JsArray queryAll(String sql) throws SQLException
+	public JsArray queryAll(String sql) throws Exception
 	{
 		return this.queryAll(sql, false);
 	}
-	public JsArray queryAll(String sql, boolean assoc) throws SQLException
+	public JsArray queryAll(String sql, boolean assoc) throws Exception
 	{
 		sql = env.getSqlForExec(sql);
 		env.dbconn();
@@ -199,7 +221,7 @@ public class JDApiBase extends Common
 		return ret;
 	}
 	
-	public int execOne(String sql) throws SQLException {
+	public int execOne(String sql) throws Exception {
 		return execOne(sql, false);
 	}
 
@@ -222,7 +244,7 @@ public class JDApiBase extends Common
 	int hongbaoId = execOne(sql, true);
 
  */
-	public int execOne(String sql, boolean getNewId) throws SQLException
+	public int execOne(String sql, boolean getNewId) throws Exception
 	{
 		sql = env.getSqlForExec(sql);
 		env.dbconn();
@@ -251,7 +273,7 @@ e.g.
 	));
 
 */
-	public int dbInsert(String table, Map<String,Object> kv) throws SQLException
+	public int dbInsert(String table, Map<String,Object> kv) throws Exception
 	{
 		StringBuffer keys = new StringBuffer();
 		StringBuffer values = new StringBuffer();
@@ -318,7 +340,7 @@ e.g.
 		"tm", dbExpr("now()")  // 使用dbExpr，表示是SQL表达式
 	), "tm IS NULL);
 */
-	public int dbUpdate(String table, Map<String,Object> kv, Object cond) throws SQLException
+	public int dbUpdate(String table, Map<String,Object> kv, Object cond) throws Exception
 	{
 		if (cond != null && cond instanceof Integer)
 			cond = String.format("id=%s", cond);
@@ -754,7 +776,7 @@ name也可以是一个数组，表示至少有一个参数有值，这时返回�
 	public Object mparam(String name, String coll, boolean htmlEscape) {
 		Object val = param(name, null, coll, htmlEscape);
 		if (val == null)
-			throw new MyException(E_PARAM, "require param `" + name + "`");
+			throw new MyException(E_PARAM, "require param `" + name + "`", "缺少参数:" + name);
 		return val;
 	}
 	
@@ -887,10 +909,27 @@ names是一个数组，表示至少有一个参数有值，返回JsArray，包�
 		return ret;
 	}
 
+/**
+%fn header(key)
+%fn header(key, val)
+%fn header(key, val, true)
 
+获取或设置header. 第三种形式表示追加header
+*/
+	public String header(String key)
+	{
+		return env.request.getHeader(key);
+	}
 	public void header(String key, String value)
 	{
-		env.response.addHeader(key, value);
+		header(key, value, false);
+	}
+	public void header(String key, String value, boolean isAppend)
+	{
+		if (isAppend)
+			env.response.addHeader(key, value);
+		else
+			env.response.setHeader(key, value);
 	}
 	public void echo(Object... objs)
 	{
