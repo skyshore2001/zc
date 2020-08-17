@@ -758,13 +758,14 @@ param file: File/String/Reader
 	String phone = "13712345678";
 	Matcher m = regexMatch(phone, "...(\\d{4})";
 	if (m.find()) { // 如果要连续匹配可用 while (m.find()) 
-		// m.group(1) 为中间4位数
+		// m.group(1) 为中间4位数，注意若该组是可选项，则可能为null
 	}
 
 正则式的标志可用`(?imsU)`的形式表示，放在pattern中。
 
 -i: 忽略大小写，如"(?i)[a-z]+"
 -U: 支持unicode匹配，如"(?U)\w+"可匹配中文字符
+-x: 可以带空格
 
  */
 	public static Matcher regexMatch(String str, String pat) {
@@ -1027,7 +1028,8 @@ Close without exception.
 	{
 		if (sep.equals("\t"))
 			sep = "\\t";
-		Matcher m = regexMatch(content, "(?Uxsm)(?: ([^\"]*?) | \"(.*?[^\"])\" ) (" + sep + "|$)");
+		// NOTE: 要么非引号开头直到分隔符，要么引号开头引号结束紧接着分隔符；这种情况不支持：""",",
+		Matcher m = regexMatch(content, "(?Uxsm)(?: ([^\"].*?) | \"(.*?)\" ) (" + sep + "|$)");
 		List<List<String>> ret = asList();
 		List<String> row = asList();
 		while (m.find()) {
@@ -1083,4 +1085,17 @@ byte数组转String，可指定多个编码一一尝试。
 	    }
 	}
 	*/
+	
+	public static class SimpleCache
+	{
+		protected Map<String, Object> cacheData = asMap();
+
+		public Object get(String key, Fn fnGet) throws Exception {
+			if (! cacheData.containsKey(key)) {
+				Object val = fnGet.call();
+				cacheData.put(key, val);
+			}
+			return cacheData.get(key);
+		}
+	}
 }
