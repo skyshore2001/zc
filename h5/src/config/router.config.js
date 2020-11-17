@@ -91,6 +91,13 @@ export const asyncRouterMap = [
         meta: { title: '列表页', icon: 'table', permission: [ 'table' ] },
         children: [
           {
+            path: '/ve/vehicleList',
+            name: 'VehicleList',
+            hideChildrenInMenu: true, // 强制显示 MenuItem 而不是 SubMenu
+            component: () => import('@/views/ve/VehicleList'),
+            meta: { title: '车辆情报', keepAlive: true }
+          },
+          {
             path: '/list/table-list/:pageNo([1-9]\\d*)?',
             name: 'TableListWrapper',
             hideChildrenInMenu: true, // 强制显示 MenuItem 而不是 SubMenu

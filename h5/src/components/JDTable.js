@@ -46,15 +46,33 @@ Ant-Design表格封装，与筋斗云后端适配。
 
 import {Table} from 'ant-design-vue'
 // const Table = Vue.options["components"]["ATable"].options
-WUI.options.PAGE_SZ = 5;
+WUI.options.PAGE_SZ = 10;
 
 Table.props.pagination.default = function () {
 	return {
 		showSizeChanger: true,
 		showQuickJumper: true,
 		defaultPageSize: WUI.options.PAGE_SZ,
-		pageSizeOptions: ["5", "10", "20", "50"],
+		pageSizeOptions: ["10", "20", "50"],
 		showTotal: (total, range) => `第${range[0]}-${range[1]}条，共${total}条`
+	}
+}
+
+// JSX: https://xie.infoq.cn/article/6af7782f35bfe69f25548470e
+var JDSelect = {
+	props: ["jdEnumMap"],
+	model: {
+		prop: 'value',
+		event: 'change'
+	},
+	render() {
+		var map = this.jdEnumMap;
+		var options = $.map(map, (v, k) => {return {value: k, label: v}});
+		options.unshift({value: "", label: "(全部)"}); // TODO: 不能为空白?
+//		console.log(this.$attrs);
+
+		var on = {...this.$listeners};
+		return <a-select attrs={ this.$attrs } on={on} options={options}></a-select>
 	}
 }
 
@@ -199,6 +217,7 @@ var JDTable = {
 	},
 	install(Vue) {
 		Vue.component("JDTable", JDTable)
+		Vue.component("JDSelect", JDSelect)
 	}
 }
 
