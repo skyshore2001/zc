@@ -19,7 +19,7 @@ import './utils/filter' // global filter
 import './components/global.less'
 
 let serverUrl = "../qiche/api/";
-/* ÓÉÓÚchrome80ºó½ûÖ¹¿çÓòµ÷ÓÃ(same-originÎÊÌâ)£¬µ÷ÊÔÊ±Ê¹ÓÃvue.config.jsÖĞµÄ´úÀí */
+/* ç”±äºchrome80åç¦æ­¢è·¨åŸŸè°ƒç”¨(same-originé—®é¢˜)ï¼Œè°ƒè¯•æ—¶ä½¿ç”¨vue.config.jsä¸­çš„ä»£ç† */
 $.extend(WUI.options, {
   serverUrl: serverUrl,
 //  serverUrl: "http://localhost:8080/qiche/api/",
@@ -38,7 +38,7 @@ Vue.config.productionTip = false
 // mount axios Vue.$http and this.$http
 Vue.use(VueAxios)
 
-new Vue({
+window.app = new Vue({
   router,
   store,
   created: bootstrap,
