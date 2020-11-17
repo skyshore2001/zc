@@ -86,22 +86,25 @@ const vueConfig = {
 
   devServer: {
     // development server port 8000
-    port: 8000
+    port: 8000,
     // If you want to turn on the proxy, please remove the mockjs /src/main.jsL11
-    // proxy: {
-    //   '/api': {
-    //     target: 'https://mock.ihx.me/mock/5baf3052f7da7e07e04a5116/antd-pro',
-    //     ws: false,
-    //     changeOrigin: true
-    //   }
-    // }
+    proxy: {
+		'/qiche/api': {
+			target: 'http://yb.shris.com.cn/qiche/api/',
+			//target: 'http://localhost:8080/qiche/api/',
+			ws: false,
+			changeOrigin: true
+//			cookieDomainRewrite: 'http://127.0.0.1:8000'
+		}
+    }
   },
 
   // disable source map in production
   productionSourceMap: false,
-  lintOnSave: undefined,
+  lintOnSave: false, // LJ: 关闭lint检查
   // babel-loader no-ignore node_modules/*
-  transpileDependencies: []
+  transpileDependencies: [],
+  publicPath: './' // LJ: 使用相对路径
 }
 
 // preview.pro.loacg.com only do not use in your production;

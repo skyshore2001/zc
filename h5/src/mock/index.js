@@ -19,5 +19,7 @@ if (process.env.NODE_ENV !== 'production' || process.env.VUE_APP_PREVIEW === 'tr
   Mock.setup({
     timeout: 800 // setter delay time
   })
+  // >>> tempfix for cookie issue of mockjs lib: https://github.com/nuysoft/Mock/issues/402
+  Mock.XHR.prototype.withCredentials = true
   console.log('mock mounted')
 }

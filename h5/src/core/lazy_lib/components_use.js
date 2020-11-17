@@ -97,3 +97,7 @@ Vue.prototype.$info = Modal.info
 Vue.prototype.$success = Modal.success
 Vue.prototype.$error = Modal.error
 Vue.prototype.$warning = Modal.warning
+
+import JDTable from '@/components/JDTable'
+Vue.use(JDTable)
+

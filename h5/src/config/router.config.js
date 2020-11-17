@@ -2,6 +2,14 @@
 import { UserLayout, BasicLayout, RouteView, BlankLayout, PageView } from '@/layouts'
 import { bxAnaalyse } from '@/core/icons'
 
+/*
+权限说明：meta.permission
+
+- 未指定时: 表示不限制权限，所有人均可访问。
+- 指定为"admin"时，表示只有“最高管理员”（mgr）才可以访问。
+- 一般在一级菜单上指定permission即可，权限名与菜单名一样即可。二级菜单可不指定。这样在角色管理中，也只须指定一级菜单。
+
+ */
 export const asyncRouterMap = [
 
   {
