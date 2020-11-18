@@ -1,0 +1,23 @@
+=== [2020-06-12T14:53:27+08:00] connect to mysql:host=yb.shris.com.cn;dbname=qiche;port=3306
+-- ALTER TABLE RepairRecord ADD anaResultId INTEGER
+=== [2020-06-12T14:53:28+08:00] done
+=== [2020-06-12T14:54:20+08:00] connect to mysql:host=yb.shris.com.cn;dbname=qiche;port=3306
+-- ALTER TABLE AnaResult ADD repairId INTEGER
+=== [2020-06-12T14:54:22+08:00] done
+=== [2020-07-26T13:42:24+08:00] connect to mysql:host=yb.shris.com.cn;dbname=qiche;port=3306
+-- ALTER TABLE SensorData ADD val5 DECIMAL(19,2)
+-- ALTER TABLE SensorData ADD val6 DECIMAL(19,2)
+=== [2020-07-26T13:42:27+08:00] done
+=== [2020-07-26T14:20:23+08:00] connect to mysql:host=yb.shris.com.cn;dbname=qiche;port=3306
+-- ALTER TABLE HubData ADD station NVARCHAR(50)
+=== [2020-07-26T14:20:25+08:00] done
+=== [2020-07-26T23:53:00+08:00] connect to mysql:host=yb.shris.com.cn;dbname=qiche;port=3306
+-- ALTER TABLE Exception ADD rawData TEXT CHARACTER SET utf8mb4
+=== [2020-07-26T23:53:01+08:00] done
+=== [2020-11-16T13:48:04+08:00] connect to mysql:host=yb.shris.com.cn;dbname=qiche;port=3306
+-- ALTER TABLE SensorData ADD tm1 DATETIME
+-- ALTER TABLE HubData ADD tm1 DATETIME
+-- ALTER TABLE HubData ADD value DECIMAL(19,2)
+-- ALTER TABLE HubData ADD raw TEXT CHARACTER SET utf8mb4
+-- ALTER TABLE Exception ADD tm1 DATETIME
+=== [2020-11-16T13:48:05+08:00] done
