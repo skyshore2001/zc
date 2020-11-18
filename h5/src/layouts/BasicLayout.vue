@@ -89,10 +89,6 @@ export default {
     }
   },
   computed: {
-    ...mapState({
-      // 动态主路由
-      mainMenu: state => state.permission.addRouters
-    }),
     contentPaddingLeft () {
       if (!this.fixSidebar || this.isMobile()) {
         return '0'
@@ -109,7 +105,7 @@ export default {
     }
   },
   created () {
-    this.menus = this.mainMenu.find(item => item.path === '/').children
+    this.menus = g_data.pages.find(item => item.path === '/').children
     this.collapsed = !this.sidebarOpened
   },
   mounted () {

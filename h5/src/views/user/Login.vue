@@ -37,14 +37,14 @@
         </a-input>
       </a-form-item>
 
-      <a-form-item>
+      <!--a-form-item>
         <a-checkbox v-decorator="['rememberMe']">自动登录</a-checkbox>
         <router-link
           :to="{ name: 'recover', params: { user: 'aaa'} }"
           class="forge-password"
           style="float: right;"
         >忘记密码</router-link>
-      </a-form-item>
+      </a-form-item-->
 
       <a-form-item style="margin-top:24px">
         <a-button
@@ -70,7 +70,6 @@
 <script>
 import md5 from 'md5'
 import TwoStepCaptcha from '@/components/tools/TwoStepCaptcha'
-import { mapActions } from 'vuex'
 import { timeFix } from '@/utils/util'
 import { getSmsCaptcha, get2step } from '@/api/login'
 
@@ -110,7 +109,6 @@ export default {
     this.requiredTwoStepCaptcha = false
   },
   methods: {
-    ...mapActions(['Login', 'Logout']),
     // handler
     handleUsernameOrEmail (rule, value, callback) {
       const { state } = this
@@ -142,9 +140,8 @@ export default {
       validateFields(validateFieldsKey, { force: true }, (err, values) => {
         if (!err) {
           const loginParams = { ...values };
-          Login(loginParams)
+          app.login(loginParams)
             .then((res) => this.loginSuccess(res))
-            .catch(err => this.requestFailed(err))
             .finally(() => {
               state.loginBtn = false
             })
@@ -193,7 +190,7 @@ export default {
       this.loginSuccess()
     },
     stepCaptchaCancel () {
-      this.Logout().then(() => {
+      app.logout().then(() => {
         this.loginBtn = false
         this.stepCaptchaVisible = false
       })

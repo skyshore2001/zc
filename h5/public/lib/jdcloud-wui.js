@@ -3020,16 +3020,18 @@ function defDataProc(rv)
 			});
 			return rv[1];
 		}
-		ctx.dfd && setTimeout(function () {
-			ctx.dfd.reject.call(that, rv[1]);
-		});
-
 		if (this.noex)
 		{
 			this.lastError = rv;
 			self.lastError = ctx;
+			ctx.dfd && setTimeout(function () {
+				ctx.dfd.resolve.call(that, false);
+			});
 			return false;
 		}
+		ctx.dfd && setTimeout(function () {
+			ctx.dfd.reject.call(that, rv);
+		});
 
 		if (rv[0] == E_NOAUTH) {
 			if (self.tryAutoLogin()) {
@@ -3268,6 +3270,15 @@ function makeUrl(action, params)
 		console.log('error', data);
 		console.log(this.ctx_.ret); // 和设置选项{noex:1}时回调中取MUI.lastError.ret 或 this.lastError相同。
 	});
+	// dfd兼容promise接口，所以dfd.fail也可以用dfd.catch
+
+使用async/await风格调用：
+
+	var rv = await callSvr(ac).catch(err => {
+		// err[0]: code
+		// err[1]: error msg
+	})
+	// rv为调用成功返回内容，调用出错时框架接管（异常报错），同时会走catch/fail回调，这里不会走到；如果不想框架接管，应使用noex:1选项
 
 @key callSvr.noex 调用接口时忽略出错，可由回调函数fn自己处理错误。
 
@@ -3297,6 +3308,13 @@ function makeUrl(action, params)
 		}
 		foo(data);
 	}, null, {noex:1});
+
+	// await风格调用
+	var rv = await callSvr(ac, $.noop, null, {noex:1});
+	// 设置noex:1且调用出错时，框架不接管，rv为false，不会触发catch/fail回调。
+	if (rv === false) {
+		var err = WUI.lastError.ret; // [code, errmsg]
+	}
 
 @see lastError 出错时的上下文信息
 
@@ -4391,6 +4409,18 @@ function makeLinkTo(dlg, id, text, obj)
 	return "<a href=\"" + dlg + "\" onclick='WUI.showObjDlg(\"" + dlg + "\",FormMode.forSet," + optStr + ");return false'>" + text + "</a>";
 }
 
+/**
+@fn WUI.showPage(path, params)
+
+e.g. 显示页面
+
+	WUI.showPage("/user/login", {redirect: "/stat"});
+ */
+self.showPage = showPage;
+function showPage(path, params)
+{
+	app.$router.push({path: path, query: params});
+}
 // ====== login token for auto login {{{
 function tokenName()
 {
@@ -4475,6 +4505,58 @@ function tryAutoLogin(onHandleLogin, reuseCmd)
 
 	self.options.onShowLogin();
 	return ok;
+}
+
+self.tryAutoLoginAsync = tryAutoLoginAsync;
+function tryAutoLoginAsync(onHandleLogin, reuseCmd, toPath)
+{
+	var ajaxOpt = {noex: true};
+	var dfd = $.Deferred();
+
+	function success(data) {
+		if (onHandleLogin)
+			onHandleLogin.call(this, data);
+		dfd.resolve();
+	}
+	function fail() {
+		dfd.reject();
+//		self.options.onShowLogin();
+	}
+
+	// first try "User.get"
+	if (reuseCmd != null) {
+		self.callSvr(reuseCmd, function (data) {
+			if (data === false) {
+				loginByToken()
+				return;
+			}
+			success(data);
+		}, null, ajaxOpt);
+	}
+	else {
+		loginByToken();
+	}
+
+	// then use "login(token)"
+	function loginByToken()
+	{
+		var token = loadLoginToken();
+		if (token != null)
+		{
+			var postData = {token: token};
+			self.callSvr("login", function (data) {
+				if (data === false) {
+					fail();
+					return;
+				}
+				success(data);
+			}, postData, ajaxOpt);
+		}
+		else {
+			fail();
+		}
+	}
+	return dfd.promise();
 }
 
 /**

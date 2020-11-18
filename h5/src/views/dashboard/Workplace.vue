@@ -111,7 +111,6 @@
 
 <script>
 import { timeFix } from '@/utils/util'
-import { mapState } from 'vuex'
 
 import { PageView } from '@/layouts'
 import HeadInfo from '@/components/tools/HeadInfo'
@@ -133,6 +132,8 @@ export default {
       timeFix: timeFix(),
       avatar: '',
       user: {},
+      nickname: 'nickname',
+      welcome: 'welcome',
 
       projects: [],
       loading: true,
@@ -180,17 +181,13 @@ export default {
     }
   },
   computed: {
-    ...mapState({
-      nickname: (state) => state.user.nickname,
-      welcome: (state) => state.user.welcome
-    }),
     userInfo () {
-      return this.$store.getters.userInfo
+      return g_data.userInfo
     }
   },
   created () {
     this.user = this.userInfo
-    this.avatar = this.userInfo.avatar
+    this.avatar = this.userInfo.avatar || 'logo.png'
 
     getRoleList().then(res => {
       // console.log('workplace -> call getRoleList()', res)

@@ -9,8 +9,8 @@
       <notice-icon class="action"/>
       <a-dropdown>
         <span class="action ant-dropdown-link user-dropdown-menu">
-          <a-avatar class="avatar" size="small" :src="avatar"/>
-          <span>{{ nickname }}</span>
+          <a-avatar class="avatar" size="small" src="logo.png"/>
+          <span>{{ u.name || u.uname }}</span>
         </span>
         <a-menu slot="overlay" class="user-dropdown-menu-wrapper">
           <a-menu-item key="0">
@@ -44,34 +44,24 @@
 
 <script>
 import NoticeIcon from '@/components/NoticeIcon'
-import { mapActions, mapGetters } from 'vuex'
 
 export default {
   name: 'UserMenu',
   components: {
     NoticeIcon
   },
-  computed: {
-    ...mapGetters(['nickname', 'avatar'])
-
+  data() {
+    return {
+      u: g_data.userInfo
+    }
   },
   methods: {
-    ...mapActions(['Logout']),
     handleLogout () {
       this.$confirm({
         title: '提示',
-        content: '真的要注销登录吗 ?',
+        content: '真的要注销登录吗?',
         onOk: () => {
-          return this.Logout({}).then(() => {
-            setTimeout(() => {
-              window.location.reload()
-            }, 16)
-          }).catch(err => {
-            this.$message.error({
-              title: '错误',
-              description: err.message
-            })
-          })
+          return app.logout()
         },
         onCancel () {
         }
