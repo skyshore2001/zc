@@ -142,7 +142,10 @@ var JDTable = {
  */
 		getQueryParam(wantRes) {
 			let param = {};
-			let cond = WUI.getQueryCond({...this.queryParam, ...this.filters})
+			let filters = {};
+			if (this.filters)
+				$.each(this.filters, (k, v) => { filters[k] = v.join(',') });
+			let cond = WUI.getQueryCond({...this.queryParam, ...filters})
 			if (cond) {
 				if (this.url.params && this.url.params.cond) {
 					param.cond = this.url.params.cond + " AND (" + cond + ")"

@@ -72,16 +72,6 @@
 
 <script>
 
-var YesNoMap = {
-	0: "否",
-	1: "是"
-};
-
-var RunFlagMap = {
-	0: "停止",
-	1: "行驶中"
-};
-
 export default {
 	data(){
 		return {
@@ -100,7 +90,7 @@ export default {
 				{ title:'车辆型号', dataIndex: '型号', sorter:true },
 				{ title: '车辆状态', dataIndex: 'exList', sorter: false, scopedSlots:{customRender:'exList'} },
 				{ title: '行驶里程', dataIndex: '总里程', sorter: true, width:120 },
-				{ title: '行驶状态', dataIndex: 'runFlag', sorter: false, width:100, jdEnumMap:RunFlagMap, jdEnumStyler:{1: 'green', 0: 'red'}},
+				{ title: '行驶状态', dataIndex: 'runFlag', sorter: false, width:100, jdEnumMap:RunFlagMap, jdEnumStyler:RunFlagStyler},
 				{ title: '异常次数', dataIndex: 'exCnt', sorter: false, width:100, sorter: true },
 				{ title: '维修次数', dataIndex: 'repairCnt', sorter: false, width:100, sorter: true },
 				{ title: '健康诊断', dataIndex: 'anaResult', sorter: false },
