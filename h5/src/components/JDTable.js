@@ -16,15 +16,43 @@ Ant-Design表格封装，与筋斗云后端适配。
 
 如果要加查询条件和控制刷新：
 
-	<JDTable :url="url" :columns="columns" :reload="reload" :queryParam="queryParam"></JDTable>
+	<a-form-item label="车辆编码">
+		<a-input v-model="queryParam.code" placeholder="" />
+	</a-form-item>
+	<a-form-item label="行驶状态">
+		<JDSelect :jdEnumMap="RunFlagMap" v-model="queryParam.runFlag" />
+	</a-form-item>
+	<a-button type="primary" @click="loadData()">查询</a-button>
+	<a-button @click="loadData(true)">重置</a-button>
+
+	<JDTable :url="url" :columns="columns" :reload="reload" :queryParam="queryParam">
+		<template v-slot:details="item">
+			<a href="javascript:;" @click="toVehicleDetail(item)">详情</a>
+		</template>
+		<template v-slot:exList="exList">
+			<span :title="exList">{{exList}}</span>
+		</template>
+	</JDTable>
 
 	data: {
 		url: WUI.makeUrl("SensorData.query", {type: "A1"}),
 		queryParam: {}, // 可缺省。额外查询条件
 		reload: {}, // 设置为null或未设置url，则初始化时不会查询
 		columns: [
-			...
+			{ title: '编号', dataIndex: 'id', sorter: true },
+			{ title: '车辆编码', dataIndex: 'code', sorter: true },
+			{ title: '行驶状态', dataIndex: 'runFlag', sorter: true, width:100, jdEnumMap:RunFlagMap, jdEnumStyler:RunFlagStyler},
+			{ title: '异常情况', dataIndex: 'exList', sorter: false, scopedSlots:{customRender:'exList'} },
+			{ title: '操作', dataIndex: '', sorter: false, align:'center', width:100, scopedSlots:{customRender:'details'} },
 		]
+	}
+	methods: {
+		// isReset?
+		loadData(isReset){
+			if (isReset)
+				this.queryParam = {};
+			this.reload = {}
+		},
 	}
 
 - queryParam: 新增属性。用于绑定查询条件（最终将拼接到cond条件中）
@@ -99,9 +127,12 @@ var JDTable = {
 		}
 	},
 	watch: {
+		url(val) {
+			this.loadData()
+		},
 		reload(val) {
 			this.pagination.current = 1;
-			this.onChange()
+			this.loadData()
 		}
 	},
 	render() {
@@ -120,9 +151,11 @@ var JDTable = {
 			cols.forEach(col => {
 				if (col.jdEnumMap) {
 					col.filters = $.map(col.jdEnumMap, (v, k) => { return {text: v, value: k} });
+				}
+				if (col.jdEnumStyler) {
 					col.customRender = function (val, row, i) {
 						var color = col.jdEnumStyler && col.jdEnumStyler[val] || '';
-						var text = col.jdEnumMap[val] || val;
+						var text = col.jdEnumMap && col.jdEnumMap[val] || val;
 						return <a-tag color={color}>{text}</a-tag>;
 					}
 				}
@@ -135,6 +168,12 @@ var JDTable = {
 		}
 	},
 	methods: {
+/**
+@fn loadData()
+ */
+		loadData() {
+			this.onChange();
+		},
 /**
 @fn getQueryParam(wantRes?)
 

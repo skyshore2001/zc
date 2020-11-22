@@ -65,3 +65,40 @@ export function removeLoadingAnimate (id = '', timeout = 1500) {
     document.body.removeChild(document.getElementById(id))
   }, timeout)
 }
+
+/**
+@fn jdCreate(baseObj, opt)
+
+高阶组件：通过简单修改组件baseObj的属性以创建新组件
+示例：根据基础组件，按类型不同分别创建不同的组件：
+
+  import { jdCreate } from '@/utils/util'
+
+  const routerMap = [
+    ...
+    {
+      path: '/health/faultWarning',
+      name: 'FaultWarning',
+      component: jdCreate(() => import('@/views/health/anaResult'), {type:"预警"}),
+      meta: { title: '故障预警' }
+    },
+    {
+      path: '/health/faultPredict',
+      name: 'FaultPredict',
+      component: jdCreate(() => import('@/views/health/anaResult'), {type:"预测"}),
+      meta: { title: '故障预测' }
+    }
+   ]
+
+*/
+export function jdCreate(baseObj, opt)
+{
+  return {
+    render() {
+      let opt1 = {...opt};
+      // 注意: opt1会被修改掉，所以复制一份
+      return <baseObj attrs={opt1} />
+    }
+  }
+}
+

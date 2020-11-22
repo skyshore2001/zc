@@ -28,7 +28,7 @@ router.beforeEach((to, from, next) => {
   to.meta && (typeof to.meta.title !== 'undefined' && setDocumentTitle(`${to.meta.title} - ${domTitle}`))
 
   if (WUI.options.whiteList.includes(to.name) || g_data.userInfo) {
-    // ÔÚÃâµÇÂ¼°×Ãûµ¥£¬Ö±½Ó½øÈë
+    // åœ¨å…ç™»å½•ç™½åå•ï¼Œç›´æ¥è¿›å…¥
     next();
     return;
     // NProgress.done() // if current page is login will not trigger afterEach hook, so manually handle it
@@ -38,11 +38,11 @@ router.beforeEach((to, from, next) => {
     .then(res => {
       const redirect = decodeURIComponent(from.query.redirect || to.path)
       if (to.path === redirect) {
-        // »ñÈ¡ÓÃ»§ĞÅÏ¢ÇÒ´¦ÀíÈ¨ÏŞºó½«¶¯Ì¬Ìí¼ÓÂ·ÓÉ£¬ºóÓ¦ÖØË¢Ò³Ãæ
-        // hack·½·¨ È·±£addRoutesÒÑÍê³É ,set the replace: true so the navigation will not leave a history record
+        // è·å–ç”¨æˆ·ä¿¡æ¯ä¸”å¤„ç†æƒé™åå°†åŠ¨æ€æ·»åŠ è·¯ç”±ï¼Œååº”é‡åˆ·é¡µé¢
+        // hackæ–¹æ³• ç¡®ä¿addRouteså·²å®Œæˆ ,set the replace: true so the navigation will not leave a history record
         next({ ...to, replace: true })
       } else {
-        // Ìø×ªµ½Ä¿µÄÂ·ÓÉ
+        // è·³è½¬åˆ°ç›®çš„è·¯ç”±
         next({ path: redirect })
       }
     })
@@ -56,9 +56,9 @@ router.afterEach(() => {
 })
 
 // {perms, rolePerms} => retRole={permissions, permissionList}
-// rolePerms¸ñÊ½Îª "dashboard table.query table.set" => permissionList=["dashboard", "table"]
+// rolePermsæ ¼å¼ä¸º "dashboard table.query table.set" => permissionList=["dashboard", "table"]
 //  permissions=[{permissionId: "dashboard", actionList: ["all"]}, {permissionId: "table", actionList: ["query", "set"] } ]
-// perms¸ñÊ½Îª "mgr" => name="×î¸ß¹ÜÀíÔ±", "emp" => name="¹ÜÀíÔ±", "item" => name="item"
+// permsæ ¼å¼ä¸º "mgr" => name="æœ€é«˜ç®¡ç†å‘˜", "emp" => name="ç®¡ç†å‘˜", "item" => name="item"
 function applyPermission()
 {
   var perms = g_data.userInfo.perms;
@@ -79,10 +79,10 @@ function applyPermission()
   }
 
   if (g_data.hasRole("mgr")) {
-    retRole.name = "×î¸ß¹ÜÀíÔ±";
+    retRole.name = "æœ€é«˜ç®¡ç†å‘˜";
   }
   else if (g_data.hasRole("emp")) {
-    retRole.name = "¹ÜÀíÔ±";
+    retRole.name = "ç®¡ç†å‘˜";
   }
   else {
     retRole.name = perms;
@@ -115,11 +115,11 @@ function applyPermission()
 }
 
 /**
-¹ıÂËÕË»§ÊÇ·ñÓµÓĞÄ³Ò»¸öÈ¨ÏŞ£¬²¢½«²Ëµ¥´Ó¼ÓÔØÁĞ±íÒÆ³ı
+è¿‡æ»¤è´¦æˆ·æ˜¯å¦æ‹¥æœ‰æŸä¸€ä¸ªæƒé™ï¼Œå¹¶å°†èœå•ä»åŠ è½½åˆ—è¡¨ç§»é™¤
 
-- mgr: ÓĞËùÓĞÈ¨ÏŞ
-- emp: ³ıadminÍâËùÓĞÈ¨ÏŞ
-- ÆäËü£º¸ù¾İpermissionListÀ´È·¶¨¡£
+- mgr: æœ‰æ‰€æœ‰æƒé™
+- emp: é™¤adminå¤–æ‰€æœ‰æƒé™
+- å…¶å®ƒï¼šæ ¹æ®permissionListæ¥ç¡®å®šã€‚
  */
 function hasPermission (role, route) {
   if (role.id == "mgr")
@@ -161,8 +161,8 @@ function handleLogin(data)
 {
   WUI.handleLogin(data);
 
-  // ¸ù¾İrolesÈ¨ÏŞÉú³É¿É·ÃÎÊµÄÂ·ÓÉ±í
-  // ¶¯Ì¬Ìí¼Ó¿É·ÃÎÊÂ·ÓÉ±í
+  // æ ¹æ®rolesæƒé™ç”Ÿæˆå¯è®¿é—®çš„è·¯ç”±è¡¨
+  // åŠ¨æ€æ·»åŠ å¯è®¿é—®è·¯ç”±è¡¨
   const roles = applyPermission();
   const accessedRouters = filterAsyncRouter(asyncRouterMap, roles)
   router.addRoutes(accessedRouters)

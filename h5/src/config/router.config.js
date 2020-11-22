@@ -1,6 +1,7 @@
 // eslint-disable-next-line
 import { UserLayout, BasicLayout, RouteView, BlankLayout, PageView } from '@/layouts'
 import { bxAnaalyse } from '@/core/icons'
+import { jdCreate } from '@/utils/util'
 
 /*
 权限说明：meta.permission
@@ -17,7 +18,7 @@ export const asyncRouterMap = [
     name: 'index',
     component: BasicLayout,
     meta: { title: '首页' },
-    redirect: '/ve/vehicleList',
+    redirect: '/ve/vehicle',
     children: [
       // dashboard
       {
@@ -25,6 +26,7 @@ export const asyncRouterMap = [
         name: 'dashboard',
         redirect: '/dashboard/workplace',
         component: RouteView,
+        hidden: !g_args.debug,
         meta: { title: '仪表盘', keepAlive: true, icon: bxAnaalyse, permission: [ 'dashboard' ] },
         children: [
           {
@@ -59,6 +61,7 @@ export const asyncRouterMap = [
         path: '/form',
         redirect: '/form/base-form',
         component: PageView,
+        hidden: !g_args.debug,
         meta: { title: '表单页', icon: 'form', permission: [ 'form' ] },
         children: [
           {
@@ -87,20 +90,19 @@ export const asyncRouterMap = [
         path: '/list',
         name: 'list',
         component: PageView,
+//        hidden: !g_args.debug,
         redirect: '/list/table-list',
         meta: { title: '列表页', icon: 'table', permission: [ 'table' ] },
         children: [
           {
-            path: '/ve/vehicleList',
+            path: '/ve/vehicle',
             name: 'VehicleList',
-            hideChildrenInMenu: true, // 强制显示 MenuItem 而不是 SubMenu
             component: () => import('@/views/ve/VehicleList'),
-            meta: { title: '车辆情报', keepAlive: true }
+            meta: { title: '车辆情报' }
           },
           {
             path: '/list/table-list/:pageNo([1-9]\\d*)?',
             name: 'TableListWrapper',
-            hideChildrenInMenu: true, // 强制显示 MenuItem 而不是 SubMenu
             component: () => import('@/views/list/TableList'),
             meta: { title: '查询表格', keepAlive: true, permission: [ 'table' ] }
           },
@@ -151,6 +153,7 @@ export const asyncRouterMap = [
         path: '/profile',
         name: 'profile',
         component: RouteView,
+        hidden: !g_args.debug,
         redirect: '/profile/basic',
         meta: { title: '详情页', icon: 'profile', permission: [ 'profile' ] },
         children: [
@@ -175,6 +178,7 @@ export const asyncRouterMap = [
         name: 'result',
         component: PageView,
         redirect: '/result/success',
+        hidden: !g_args.debug,
         meta: { title: '结果页', icon: 'check-circle-o', permission: [ 'result' ] },
         children: [
           {
@@ -197,6 +201,7 @@ export const asyncRouterMap = [
         path: '/exception',
         name: 'exception',
         component: RouteView,
+        hidden: !g_args.debug,
         redirect: '/exception/403',
         meta: { title: '异常页', icon: 'warning', permission: [ 'exception' ] },
         children: [
@@ -226,6 +231,7 @@ export const asyncRouterMap = [
         path: '/account',
         component: RouteView,
         redirect: '/account/center',
+        hidden: !g_args.debug,
         name: 'account',
         meta: { title: '个人页', icon: 'user', keepAlive: true, permission: [ 'user' ] },
         children: [
@@ -283,6 +289,7 @@ export const asyncRouterMap = [
         path: '/other',
         name: 'otherPage',
         component: PageView,
+        hidden: !g_args.debug,
         meta: { title: '其他组件', icon: 'slack', permission: [ 'dashboard' ] },
         redirect: '/other/icon-selector',
         children: [
