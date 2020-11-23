@@ -58,6 +58,11 @@ Ant-Design表格封装，与筋斗云后端适配。
 - queryParam: 新增属性。用于绑定查询条件（最终将拼接到cond条件中）
 - reload: 新增属性。用于触发刷新：`this.reload = {}`
 
+指定缺省排序字段defaultSortOrder, 指定缺省过滤defaultFilteredValue（可以设置多个字段），示例：
+
+			{ title: '编号', dataIndex: 'id', sorter: true , defaultSortOrder:'descend'},
+			{ title: '行驶状态', dataIndex: 'runFlag', sorter: true, width:100, jdEnumMap:RunFlagMap, jdEnumStyler:RunFlagStyler, defaultFilteredValue:['0']},
+
 事件：
 
 - handleRow(row, i, data): 对列表行数据row做预处理。若要替换当前行，可以用`data[i] = newRow`
@@ -145,7 +150,7 @@ var JDTable = {
 			onChange={this.onChange}
 		/>
 	},
-	beforeCreate() {
+	created() {
 		var cols = this.$attrs.columns;
 		if (cols) {
 			cols.forEach(col => {
@@ -158,6 +163,14 @@ var JDTable = {
 						var text = col.jdEnumMap && col.jdEnumMap[val] || val;
 						return <a-tag color={color}>{text}</a-tag>;
 					}
+				}
+				if (col.defaultSortOrder) {
+					this.sorter = {columnKey: col.dataIndex, order: col.defaultSortOrder};
+				}
+				if (col.defaultFilteredValue) {
+					if (this.filters == null)
+						this.filters = {};
+					this.filters[col.dataIndex] = col.defaultFilteredValue;
 				}
 			});
 		}
