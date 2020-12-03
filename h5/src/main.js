@@ -17,7 +17,7 @@ import './core/lazy_use'
 import './utils/filter' // global filter
 import './components/global.less'
 
-let serverUrl = "../qiche/api/";
+let serverUrl = "api/";
 /* 由于chrome80后禁止跨域调用(same-origin问题)，调试时使用vue.config.js中的代理 */
 $.extend(WUI.options, {
   serverUrl: serverUrl,

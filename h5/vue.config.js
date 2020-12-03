@@ -89,11 +89,12 @@ const vueConfig = {
     port: 8000,
     // If you want to turn on the proxy, please remove the mockjs /src/main.jsL11
     proxy: {
-		'/qiche/api': {
+		'api/': {
 			target: 'http://yb.shris.com.cn/qiche/api/',
 			//target: 'http://localhost:8080/qiche/api/',
 			ws: false,
-			changeOrigin: true
+			changeOrigin: true,
+			cookiePathRewrite: '/',
 //			cookieDomainRewrite: 'http://127.0.0.1:8000'
 		}
     }
