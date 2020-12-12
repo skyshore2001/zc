@@ -4,12 +4,12 @@
 			<a-form layout="inline">
 				<a-row :gutter="48">
 					<a-col :md="6" :sm="24">
-						<a-form-item label="车辆编号">
+						<a-form-item label="车辆编码">
 							<a-input v-model="queryParam.code" placeholder="" />
 						</a-form-item>
 					</a-col>
 					<a-col :md="6" :sm="24">
-						<a-form-item label="列车编号">
+						<a-form-item label="列车编码">
 							<a-input v-model="queryParam.hubCode" placeholder="" />
 						</a-form-item>
 					</a-col>
@@ -77,34 +77,31 @@ export default {
 		return {
 			// 高级搜索 展开/关闭
 			advanced: false,
-			url: WUI.makeUrl("Vehicle.query",{orderby:'id DESC'}),
+			url: WUI.makeUrl("Vehicle.query"),
 			reload: {},
 			queryParam:{},
 			RunFlagMap,
 			YesNoMap,
 			// 表头
 			columns: [
-				{ title: '编号', dataIndex: 'id', sorter: true },
-				{ title: '车辆编号', dataIndex: 'code', sorter: true },
-				{ title: '列车编号', dataIndex: 'hubCode', sorter: true },
+				{ title: '编号', dataIndex: 'id', sorter: true , defaultSortOrder:'descend'},
+				{ title: '车辆编码', dataIndex: 'code', sorter: true, sorter:true },
+				{ title: '列车编码', dataIndex: 'hubCode', sorter: true },
 				{ title:'车辆型号', dataIndex: '型号', sorter:true },
 				{ title: '车辆状态', dataIndex: 'exList', sorter: false, scopedSlots:{customRender:'exList'} },
-				{ title: '行驶里程', dataIndex: '总里程', sorter: true, width:120 },
-				{ title: '行驶状态', dataIndex: 'runFlag', sorter: false, width:100, jdEnumMap:RunFlagMap, jdEnumStyler:RunFlagStyler},
-				{ title: '异常次数', dataIndex: 'exCnt', sorter: false, width:100, sorter: true },
-				{ title: '维修次数', dataIndex: 'repairCnt', sorter: false, width:100, sorter: true },
+				{ title: '行驶里程', dataIndex: '总里程', sorter: true },
+				{ title: '行驶状态', dataIndex: 'runFlag', sorter: true, jdEnumMap:RunFlagMap, jdEnumStyler:RunFlagStyler },
+				{ title: '异常次数', dataIndex: 'exCnt', sorter: false, sorter: true },
+				{ title: '维修次数', dataIndex: 'repairCnt', sorter: false, sorter: true },
 				{ title: '健康诊断', dataIndex: 'anaResult', sorter: false },
-				{ title: '操作', dataIndex: '', sorter: false, /* fixed:'right', */align:'center', width:100, scopedSlots:{customRender:'details'} },
+				{ title: '操作', sorter: false, /* fixed:'right', */ align:'center', scopedSlots:{customRender:'details'} },
 			],
 		}
 	},
 	methods:{
 		toVehicleDetail(item){
 			this.$router.push({
-				path:'/ve/vehicleDetail',
-				query:{
-					id:item.id
-				}
+				path:'/ve/vehicle/' + item.id
 			})
 		},
 		toVehicleList(){
