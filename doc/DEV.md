@@ -1,3 +1,27 @@
+# 开发说明
+
+## 编译机制
+
+java的编译发布采用经典的Makefile方式，极轻量化且专用于筋斗云框架jdcloud-java。
+
+- make: 编译，结果生成到classes目录
+- make dist: 创建发布目录(将编译和资源复制到发布目录, 用于打包发布或推送线上)
+- make publish: 提交发布目录git库，并通过git推送发布
+- make clean: 清除内容
+
+执行`make dist`命令，就将编译结果输出到指定的OUT_DIR目录（惯例为项目平级的xx-online目录，xx为项目名）。
+
+执行`make publish`直接差量部署上线：（秒级升级，比传统拷贝war包高效很多）
+
+在java/tool目录下封装了:
+
+- war.mak: 生成war包（实际上只生成war目录，不去最终生成war文件，用于差量打包上线），部署于tomcat的java web应用。
+ 在java目录下的Makefile默认包含它。
+- jar.mak: 生成jar包，用于命令行启动运行的生成java应用程序。
+- publish.mak: 用于差量部署上线。
+
+其中，war.mak包含了jar.mak，而jar.mak包含了publish.mak.
+
 ## 表格用法
 
 Ant-Design表格封装，与筋斗云后端适配。
