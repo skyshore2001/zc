@@ -90,11 +90,11 @@ batch操作的明细表。
 
 - 登录
 
-@include plugin/jdcloud-login.DESIGN.md
+@include plugin/jdcloud-java-login.README.md
 
 - 图片、附件与上传
 
-@include plugin/jdcloud-upload.DESIGN.md
+@include plugin/jdcloud-java-upload.README.md
 
 ## 交互接口设计
 
